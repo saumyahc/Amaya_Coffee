@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "400517433579",
+    "project_id": "cafe-review-73a3d",
+    "storage_bucket": "cafe-review-73a3d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400517433579:android:2521e354ffb8c4634a96ae",
+        "android_client_info": {
+          "package_name": "com.example.amaya_coffee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD2P3MdRpLySEYl0YwCyBKErsDJllDjqI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400517433579:android:244286ccc0bbdcfd4a96ae",
+        "android_client_info": {
+          "package_name": "com.example.test1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD2P3MdRpLySEYl0YwCyBKErsDJllDjqI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
