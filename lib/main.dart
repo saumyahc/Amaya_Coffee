@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
@@ -7,10 +8,18 @@ import 'splash_screen.dart';
 import 'login_page.dart';
 import 'registration_page.dart';
 import 'home_page.dart';
+import 'cart_page.dart';
+import 'models/cart.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Ensure auth persistence on web
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  }
 
   // Set full screen mode
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -42,8 +51,8 @@ class _MyAppState extends State<MyApp> {
 
   void _checkAuthState() {
     _auth.authStateChanges().listen((User? user) {
-      if (user != null && _page == 1) {
-        // User is logged in and we're on login page, go to main
+      if (user != null) {
+        // User is logged in, go to main regardless of current page
         _goToMain();
       }
     });
@@ -58,7 +67,16 @@ class _MyAppState extends State<MyApp> {
     Widget child;
     switch (_page) {
       case 0:
-        child = SplashScreen(onSplashDone: _goToLogin);
+        child = SplashScreen(
+          onSplashDone: () {
+            final user = _auth.currentUser;
+            if (user != null) {
+              _goToMain();
+            } else {
+              _goToLogin();
+            }
+          },
+        );
         break;
       case 1:
         child = LoginPage(
@@ -82,7 +100,11 @@ class _MyAppState extends State<MyApp> {
         );
         break;
     }
-    return MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartModel()),
+      ],
+      child: MaterialApp(
       title: 'Amaya Coffee',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -93,6 +115,10 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       home: child,
+      routes: {
+        '/cart': (_) => const CartPage(),
+      },
+    ),
     );
   }
 }

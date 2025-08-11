@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import 'models/cart.dart';
 
 class Coffee {
   final int id;
@@ -58,11 +60,33 @@ class _HomePageState extends State<HomePage> {
               // TODO: Implement search functionality
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Colors.white),
-            onPressed: () {
-              // TODO: Implement cart functionality
-            },
+          Consumer<CartModel>(
+            builder: (context, cart, _) => Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/cart');
+                  },
+                ),
+                if (cart.totalItems > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${cart.totalItems}',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
@@ -344,7 +368,18 @@ class _HomePageState extends State<HomePage> {
                                     Expanded(
                                       child: ElevatedButton(
                                         onPressed: () {
-                                          // TODO: Add to cart functionality
+                                          context.read<CartModel>().add(
+                                                coffee.id,
+                                                coffee.name,
+                                                coffee.image,
+                                              );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text('${coffee.name} added to cart'),
+                                              duration: const Duration(seconds: 1),
+                                            ),
+                                          );
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(
