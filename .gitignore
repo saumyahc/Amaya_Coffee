@@ -1,0 +1,89 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
+.melos_tool/
+.pub/
+.pub-cache/
+
+# Build outputs
+build/
+**/generated/
+coverage/
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDEs
+# VS Code
+.vscode/
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/captures/
+# Keystore & signing
+**/*.keystore
+**/*.jks
+android/app/key.properties
+
+# iOS
+ios/Flutter/.last_build_id
+ios/Flutter/ephemeral/
+ios/.generated/
+# Xcode user data
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+# Derived data
+**/DerivedData/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Windows
+# (build outputs are under build/ already)
+
+# Linux
+linux/flutter/ephemeral/
+linux/**/CMakeFiles/
+linux/**/CMakeCache.txt
+linux/**/cmake_install.cmake
+linux/**/Makefile
+
+# CMake (desktop builds)
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+**/*.cmake
+
+# Web
+# Generated at build time
+web/flutter_service_worker.js
+
+# Firebase / FlutterFire
+.firebase/
+firebase-debug.log
+# Intentionally keep these tracked if already added:
+# android/app/google-services.json
+# ios/Runner/GoogleService-Info.plist
+
+# Fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots/
+**/fastlane/test_output/
