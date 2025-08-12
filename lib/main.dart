@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'splash_screen.dart';
-import 'login_page.dart';
-import 'registration_page.dart';
-import 'home_page.dart';
-import 'cart_page.dart';
+import 'pages/splash_page.dart';
+import 'pages/login_page.dart';
+import 'pages/registration_page.dart';
+import 'pages/home_page.dart';
+import 'pages/cart_page.dart';
 import 'models/cart.dart';
 import 'package:provider/provider.dart';
 
