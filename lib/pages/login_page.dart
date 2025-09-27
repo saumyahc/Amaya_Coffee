@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'registration_page.dart'; // Import your existing registration page
 
 class LoginPage extends StatefulWidget {
-  final VoidCallback onRegisterTap;
   final VoidCallback onLoginSuccess;
+  
   const LoginPage({
     super.key,
-    required this.onRegisterTap,
     required this.onLoginSuccess,
   });
 
@@ -51,6 +51,20 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
+  }
+
+  void _navigateToRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RegistrationPage(
+          onLoginTap: () {
+            Navigator.pop(context); // Go back to login page
+          },
+          onRegisterSuccess: widget.onLoginSuccess, // Pass the callback
+        ),
+      ),
+    );
   }
 
   String _getErrorMessage(String code) {
@@ -199,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(color: Colors.grey),
                   ),
                   TextButton(
-                    onPressed: widget.onRegisterTap,
+                    onPressed: _navigateToRegister,
                     child: const Text(
                       'Register',
                       style: TextStyle(
