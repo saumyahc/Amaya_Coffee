@@ -10,11 +10,16 @@ import 'pages/registration_page.dart';
 import 'pages/home_page.dart';
 import 'pages/cart_page.dart';
 import 'models/cart.dart';
+import 'models/coffee.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Hive.initFlutter();
+  // Register Hive adapters after init
+  Hive.registerAdapter(CoffeeAdapter());
 
   // Ensure auth persistence on web
   if (kIsWeb) {

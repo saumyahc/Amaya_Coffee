@@ -7,7 +7,7 @@ class RegistrationPage extends StatefulWidget {
   final VoidCallback onLoginTap;
   final VoidCallback onRegisterSuccess;
   const RegistrationPage({
-    super.key,
+    super.key, 
     required this.onLoginTap,
     required this.onRegisterSuccess,
   });

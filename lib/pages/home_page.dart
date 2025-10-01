@@ -1,3 +1,4 @@
+import 'package:amaya_coffee/services/local_coffee_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -19,19 +20,56 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _coffeeService = CoffeeService(FirebaseFirestore.instance);
+  final _localCoffeeService = LocalCoffeeService();
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
+
+  List<Coffee> _coffees = [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    // Load cart from Firestore when page initializes
+    _loadCoffeesFromCacheThenSync();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CartModel>().loadCartFromFirestore();
     });
-
-    // Initialize video player
     _initializeVideo();
+  }
+
+  Future<void> _loadCoffeesFromCacheThenSync() async {
+    // 1. Load from Hive cache first
+    try {
+      final cached = await _localCoffeeService.getAllCoffees();
+      print('[CACHE] Loaded ${cached.length} coffees from Hive');
+      setState(() {
+        _coffees = cached;
+        _loading = false;
+      });
+    } catch (e, stack) {
+      print('[CACHE] Hive error: $e');
+      print(stack);
+      setState(() {
+        _error = 'Error loading cached coffees';
+        _loading = false;
+      });
+    }
+    // 2. Try to sync with Firestore if online
+    try {
+      final result = await FirebaseFirestore.instance.collection('coffees').limit(1).get();
+      if (result.docs.isNotEmpty || result.docs.isEmpty) {
+        final fresh = await _coffeeService.coffeesStream().first;
+        print('[SYNC] Fetched ${fresh.length} coffees from Firestore');
+        await _localCoffeeService.cacheCoffees(fresh);
+        setState(() {
+          _coffees = fresh;
+        });
+      }
+    } catch (e) {
+      print('[SYNC] Firestore error: $e');
+      // No internet or Firestore error, keep cached data
+    }
   }
 
   void _initializeVideo() async {
@@ -364,246 +402,116 @@ class _HomePageState extends State<HomePage> {
 
           // Coffee list
           Expanded(
-            child: StreamBuilder<List<Coffee>>(
-              stream: _coffeeService.coffeesStream(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Error loading coffees',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF8B4513)),
-                  );
-                }
-
-                final data = snapshot.data;
-                if (data == null || data.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.coffee_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No coffees available',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                final coffees = data;
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: coffees.length,
-                  itemBuilder: (context, index) {
-                    Coffee coffee = coffees[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Coffee image
-                          ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
-                            ),
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: coffee.image.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: coffee.image,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        color: Colors.grey.shade200,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(
-                                            color: Color(0xFF8B4513),
-                                          ),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(
-                                            color: Colors.grey.shade200,
-                                            child: const Icon(
-                                              Icons.coffee,
-                                              size: 50,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                    )
-                                  : Container(
-                                      color: Colors.grey.shade200,
-                                      child: const Icon(
-                                        Icons.coffee,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                            ),
-                          ),
-
-                          // Coffee details
-                          Padding(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B4513)))
+                : _error != null
+                    ? Center(child: Text(_error!, style: const TextStyle(fontSize: 18, color: Colors.grey)))
+                    : _coffees.isEmpty
+                        ? Center(child: Text('No coffees available', style: const TextStyle(fontSize: 18, color: Colors.grey)))
+                        : ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        coffee.name,
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF8B4513),
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF8B4513),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        '₹${coffee.price.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                            itemCount: _coffees.length,
+                            itemBuilder: (context, index) {
+                              Coffee coffee = _coffees[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
-
-                                // Action buttons
-                                Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () {
-                                          context.read<CartModel>().add(
-                                            coffee.id,
-                                            coffee.name,
-                                            coffee.image,
-                                            coffee.price,
-                                          );
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                '${coffee.name} added to cart',
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                                      child: AspectRatio(
+                                        aspectRatio: 16 / 9,
+                                        child: coffee.image.isNotEmpty
+                                            ? CachedNetworkImage(
+                                                imageUrl: coffee.image,
+                                                placeholder: (context, url) => CircularProgressIndicator(),
+                                                errorWidget: (context, url, error) => Icon(Icons.error),
+                                                fit: BoxFit.cover,
+                                                width: 120,
+                                                height: 120,
+                                              )
+                                            : Container(
+                                                color: Colors.grey.shade200,
+                                                child: const Icon(Icons.coffee, size: 50, color: Colors.grey),
                                               ),
-                                              duration: const Duration(
-                                                seconds: 1,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF8B4513,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Add to Cart',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CoffeeDetailsPage(
-                                                    coffee: coffee,
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(coffee.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF8B4513))),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(color: const Color(0xFF8B4513), borderRadius: BorderRadius.circular(20)),
+                                                child: Text('₹${coffee.price.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () {
+                                                    context.read<CartModel>().add(coffee.id, coffee.name, coffee.image, coffee.price);
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(content: Text('${coffee.name} added to cart'), duration: const Duration(seconds: 1)),
+                                                    );
+                                                  },
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: const Color(0xFF8B4513),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                                   ),
-                                            ),
-                                          );
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: const Color(
-                                            0xFF8B4513,
+                                                  child: const Text('Add to Cart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (context) => CoffeeDetailsPage(coffee: coffee),
+                                                      ),
+                                                    );
+                                                  },
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: const Color(0xFF8B4513),
+                                                    side: const BorderSide(color: Color(0xFF8B4513)),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
+                                                  child: const Text('View Details', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          side: const BorderSide(
-                                            color: Color(0xFF8B4513),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'View Details',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -712,3 +620,6 @@ class CoffeeSearchDelegate extends SearchDelegate<void> {
     );
   }
 }
+
+
+
